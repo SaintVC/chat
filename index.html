@@ -9,21 +9,28 @@
   <script type="module">
     import { io } from 'https://cdn.socket.io/4.3.2/socket.io.esm.min.js'
 
+    // Función para obtener el nombre de usuario
     const getUsername = async () => {
-      const username = localStorage.getItem('username')
+      let username = localStorage.getItem('username')
       if (username) {
         console.log(`User existed ${username}`)
         return username
       }
 
-      const res = await fetch('https://random-data-api.com/api/users/random_user')
-      const { username: randomUsername } = await res.json()
-
-      localStorage.setItem('username', randomUsername)
-      return randomUsername
+      // En caso de que la API esté caída, pedimos el nombre al usuario
+      try {
+        const res = await fetch('https://random-data-api.com/api/users/random_user')
+        const { username: randomUsername } = await res.json()
+        localStorage.setItem('username', randomUsername)
+        return randomUsername
+      } catch (error) {
+        console.log("Error fetching username, please enter one manually.")
+        return prompt("Enter your username:") || "anonymous"
+      }
     }
 
-    const socket = io({
+    // Crear conexión Socket.io con la URL del servidor
+    const socket = io('http://190.14.140.64:3000', { // Cambia esto con la URL correcta si es necesario
       auth: {
         username: await getUsername(),
         serverOffset: 0
@@ -34,6 +41,7 @@
     const input = document.getElementById('input')
     const messages = document.getElementById('messages')
 
+    // Escuchar nuevos mensajes del servidor
     socket.on('chat message', (msg, serverOffset, username) => {
       const item = `<li>
         <p>${msg}</p>
@@ -41,10 +49,11 @@
       </li>`
       messages.insertAdjacentHTML('beforeend', item)
       socket.auth.serverOffset = serverOffset
-      // scroll to bottom of messages
+      // Desplazarse hacia abajo al recibir nuevos mensajes
       messages.scrollTop = messages.scrollHeight
     })
 
+    // Enviar mensaje al servidor cuando el formulario se envíe
     form.addEventListener('submit', (e) => {
       e.preventDefault()
 
